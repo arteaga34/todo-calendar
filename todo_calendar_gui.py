@@ -628,6 +628,7 @@ HTML = """
         .hour-line {
             height: 60px;
             border-bottom: 1px solid var(--gray-light);
+            cursor: pointer;
         }
 
         /* Current time indicator */
@@ -1591,7 +1592,39 @@ HTML = """
                 column.addEventListener('dragover', handleDragOver);
                 column.addEventListener('dragleave', handleDragLeave);
                 column.addEventListener('drop', handleDrop);
+                column.addEventListener('click', handleColumnClick);
             });
+        }
+
+        // Click-to-create: click an empty time slot to pre-fill the form
+        async function handleColumnClick(e) {
+            // Ignore clicks on events
+            if (e.target.closest('.event')) return;
+
+            const rect = this.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const snappedY = snapToGrid(y);
+            const totalMinutes = (snappedY / HOUR_HEIGHT) * 60;
+            const hour = START_HOUR + Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+
+            // Build datetime from column date + clicked time
+            const dateStr = this.dataset.date;
+            const localISO = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+            // Format for display
+            const clickedDate = new Date(localISO);
+            const displayTime = clickedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) +
+                ' at ' + clickedDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+            // Pre-fill the form
+            document.getElementById('taskTime').value = displayTime;
+            document.getElementById('parsedTime').textContent = '→ ' + displayTime;
+            document.getElementById('parsedTime').classList.remove('error');
+            parsedTimeISO = localISO;
+
+            // Focus the task name input
+            document.getElementById('taskName').focus();
         }
 
         function snapToGrid(y) {
