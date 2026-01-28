@@ -679,6 +679,35 @@ HTML = """
             background: var(--mint-dim);
         }
 
+        .snap-guide {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--mint);
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: top 0.05s ease-out;
+        }
+
+        .snap-guide.visible {
+            opacity: 1;
+        }
+
+        .snap-guide .snap-time-label {
+            position: absolute;
+            right: 4px;
+            top: -18px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--mint);
+            background: var(--black);
+            padding: 2px 6px;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
         .event:hover {
             z-index: 10;
             background: var(--gray-light);
@@ -1221,6 +1250,7 @@ HTML = """
                 const colDateStr = colDate.toISOString().split('T')[0];
 
                 let columnHTML = `<div class="day-column" data-day="${day}" data-date="${colDateStr}">`;
+                columnHTML += `<div class="snap-guide"><span class="snap-time-label"></span></div>`;
 
                 // Hour lines (background grid)
                 for (let hour = START_HOUR; hour <= END_HOUR; hour++) {
@@ -1550,6 +1580,8 @@ HTML = """
             element.classList.remove('dragging');
             document.querySelectorAll('.day-column').forEach(col => {
                 col.classList.remove('drag-over');
+                const guide = col.querySelector('.snap-guide');
+                if (guide) guide.classList.remove('visible');
             });
         }
 
@@ -1561,28 +1593,59 @@ HTML = """
             });
         }
 
+        function snapToGrid(y) {
+            const quarterHour = HOUR_HEIGHT / 4; // 15px per 15 min
+            return Math.round(y / quarterHour) * quarterHour;
+        }
+
+        function snapYToTime(snappedY) {
+            const totalMinutes = (snappedY / HOUR_HEIGHT) * 60;
+            const hour = START_HOUR + Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const period = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+            const displayMin = String(minutes).padStart(2, '0');
+            return `${displayHour}:${displayMin} ${period}`;
+        }
+
         function handleDragOver(e) {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             this.classList.add('drag-over');
+
+            // Snap guide to 15-min increments
+            const rect = this.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const snappedY = snapToGrid(y);
+            const guide = this.querySelector('.snap-guide');
+            if (guide) {
+                guide.style.top = snappedY + 'px';
+                guide.classList.add('visible');
+                guide.querySelector('.snap-time-label').textContent = snapYToTime(snappedY);
+            }
         }
 
         function handleDragLeave(e) {
             this.classList.remove('drag-over');
+            const guide = this.querySelector('.snap-guide');
+            if (guide) guide.classList.remove('visible');
         }
 
         async function handleDrop(e) {
             e.preventDefault();
             this.classList.remove('drag-over');
+            const guide = this.querySelector('.snap-guide');
+            if (guide) guide.classList.remove('visible');
 
             if (!draggedEvent) return;
 
-            // Calculate new time based on drop position
+            // Calculate new time based on drop position, snapped to 15 min
             const rect = this.getBoundingClientRect();
             const y = e.clientY - rect.top;
-            const hourOffset = y / HOUR_HEIGHT;
-            const newHour = START_HOUR + Math.floor(hourOffset);
-            const newMinutes = Math.round((hourOffset % 1) * 60 / 15) * 15; // Round to 15 min
+            const snappedY = snapToGrid(y);
+            const totalMinutes = (snappedY / HOUR_HEIGHT) * 60;
+            const newHour = START_HOUR + Math.floor(totalMinutes / 60);
+            const newMinutes = totalMinutes % 60;
 
             // Get the date from the column
             const dateStr = this.dataset.date;
