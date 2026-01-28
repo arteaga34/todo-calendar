@@ -26,14 +26,15 @@ SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 # File paths - handle PyInstaller bundle
 if getattr(sys, 'frozen', False):
-    # Running as PyInstaller bundle
-    SCRIPT_DIR = Path(sys.executable).parent
+    # Running as PyInstaller bundle (.app/Contents/MacOS/exe → go up to .app's parent)
+    SCRIPT_DIR = Path(sys.executable).parent.parent.parent.parent
 else:
     # Running as script
     SCRIPT_DIR = Path(__file__).parent
 
 CREDENTIALS_FILE = SCRIPT_DIR / 'credentials.json'
 TOKEN_FILE = SCRIPT_DIR / 'token.json'
+
 
 
 class CalendarAPI:
