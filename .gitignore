@@ -1,0 +1,17 @@
+# Credentials (keep private!)
+credentials.json
+token.json
+
+# Build artifacts
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
